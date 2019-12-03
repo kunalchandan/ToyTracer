@@ -2,6 +2,9 @@ extern crate image as im;
 extern crate imageproc as proc;
 extern crate nalgebra as nl;
 
+use nl::{Matrix, U1};
+use std::panic::resume_unwind;
+
 pub const WIDTH: u32 = 400;
 pub const HEIGHT: u32 = 400;
 
@@ -21,6 +24,8 @@ pub const RAY_BOUNCE_MAX: u8 = 5;
 
 
 struct Ray {
+    // EQ:: Origin + Direction*t
+    // TODO:: manage distance travelled
     o: nl::Vector3<f32>,
     d: nl::Vector3<f32>,
     count: u8 // number of collisions the ray has gone through so far
@@ -34,6 +39,52 @@ struct Plane {
     d: f32
 }
 
+pub trait Traceable {
+    fn trace(&self, r: Ray) -> Ray;
+    fn normal(&self, r: Ray) -> Ray;
+    fn intersect(&self, r: Ray) -> nl::Vector3<f32>;
+}
+
+impl Traceable for Plane {
+    fn trace(&self, r: Ray) -> Ray {
+        if self.normal(r).d.dot(&r.d) < (0.01 / WIDTH as f32) {
+            // This has a solution, i.e. can be seen because it is not parallel
+            // For direction vector, we need the magnitude of the normal that equals the magnitude
+            // of the vector in parallel to the normal of the plane
+            let new_d: nl::Vector3<f32> = r.d - (2 * r.d.dot(&(self.normal(r))) * self.normal(r).d.normalize());
+            if t > 0.0 {
+                let b = Ray {
+                    o: self.intersect(r),
+                    d: new_d,
+                    count: 0
+                };
+                return b;
+            }
+            else {
+                // Intersection Behind Camera
+                return r;
+            }
+        }
+        else{
+            // They are practically parallel
+            return r;
+        }
+    }
+
+    fn normal(&self, r: Ray) -> Ray {
+        return Ray {
+            o: self.intersect(r), // This iis not needed, consider commenting out
+            d: nl::Vector3::new(self.a, self.b, self.c),
+            count: 0
+        };
+    }
+
+    fn intersect(&self, r: Ray) -> nl::Vector3<f32> {
+        let t: f32 = (-self.d)/self.normal(r).d.dot(&(r.d));
+        return r.o + (r.d * t);
+    }
+}
+
 struct Sphere {
     // EQ:: (x-x0)^2 + (y-y0)^2 + (z-z0)^2 - r^2 = 0
     x0: f32,
@@ -42,7 +93,17 @@ struct Sphere {
     r: f32
 }
 
-//fn ray_collision(ray: Ray, )
+pub struct World<T: Traceable> {
+    pub components: Vec<T>
+}
+
+//impl<T> World<T> where T: Traceable {
+//    pub fn run(&self) {
+//        for component in self.components.iter() {
+//            component.trace();
+//        }
+//    }
+//}
 
 fn create_ray(o: nl::Vector3<f32>, q: nl::Vector3<f32>, count: u8) -> Ray {
     let d: nl::Vector3<f32> = q - o;
