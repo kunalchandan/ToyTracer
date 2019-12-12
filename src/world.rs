@@ -43,7 +43,7 @@ impl Traceable for Plane {
 
     fn normal(&self, r: Ray) -> Ray {
         return Ray {
-            o: self.intersect(r).1, // This is not needed, consider commenting out
+            o: nl::Vector3::new(0.0,0.0,0.0),
             d: nl::Vector3::new(self.a, self.b, self.c),
             count: 0
         };
