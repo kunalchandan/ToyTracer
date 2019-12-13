@@ -32,44 +32,47 @@ pub const CAM_P: f32 = 0.0; // Phi ( Up down plane)
 
 pub const SCR_X: f32 = 1.0; // Right left width of screen
 pub const SCR_Y: f32 = 1.0; // Up down width of screen
-pub const SCR_Z: f32 = 0.5; // How far forwards the screen is
+pub const SCR_Z: f32 = 0.0; // How far forwards the screen is
 
 
 pub struct Tracer {
-    planes: Vec<Plane>,
-    spheres: Vec<Sphere>,
+    objects: Vec<Box<dyn Traceable>>,
     canvas: im::ImageBuffer<im::Rgba<u8>, Vec<u8>>,
 }
 
 impl Tracer {
     pub fn new() -> Self {
         Self {
-            planes: Vec::new(),
-            spheres: Vec::new(),
+            objects: Vec::new(),
             canvas: im::ImageBuffer::new(WIDTH, HEIGHT),
         }
     }
 
-    pub fn create_world (&mut self) {
-        self.planes.push( Plane {
+    pub fn add_object<S: Traceable + 'static>(&mut self, object: S) -> &mut Self {
+        self.objects.push(Box::new(object));
+        return self;
+    }
+
+    pub fn create_world(&mut self) {
+        self.add_object( Plane {
             a: 1.0,
             b: 2.0,
             c: 3.0,
             d: 4.0
         });
-        self.planes.push(Plane {
+        self.add_object(Plane {
             a: 0.0,
             b: 1.0,
             c: 2.0,
             d: 3.0
         });
-        self.spheres.push(Sphere {
+        self.add_object(Sphere {
             x0: 2.0,
             y0: 2.0,
             z0: 0.0,
             r: 3.0
         });
-        self.spheres.push(Sphere {
+        self.add_object(Sphere {
             x0: 1.0,
             y0: 1.0,
             z0: 1.0,
@@ -95,13 +98,13 @@ impl Tracer {
                                                                  (j as f32)*SCR_Y/(HEIGHT as f32),
                                                                  SCR_Z) + cam_pos;
                 let r = create_ray(cam_pos, scr_pos, RAY_BOUNCE_MAX);
-                for obj in self.planes.iter() {
+                for obj in self.objects.iter() {
                     let r_new = obj.trace(r);
                     if r_new.count == r.count {
                     }
                     else {
                         // Draw to pixel here the colour of the object
-                        *self.canvas.get_pixel_mut(i, j) = im::Rgba([255, 255, 255, 255])
+                        *self.canvas.get_pixel_mut(i, j) = im::Rgba([0, 255, 0, 255])
                     }
                     // If ray intersects object
                     // Find normal of object at this point
@@ -170,7 +173,7 @@ fn main() {
                 // Update texture before rendering.
                 texture_context.encoder.flush(device);
 
-                clear([0.0; 4], g);
+                clear([1.0; 4], g);
                 image(&texture, c.transform, g);
             });
 
