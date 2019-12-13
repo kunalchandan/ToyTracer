@@ -84,6 +84,17 @@ impl Tracer {
         self.set_hit_img();
     }
 
+    pub fn draw_background(&mut self) {
+        for j in 0..HEIGHT {
+            for i in 0..WIDTH {
+                let r = (255.0 * (j as f32 / HEIGHT as f32 )) as u8;
+                let b = (255.0 * (i as f32 / WIDTH  as f32 )) as u8;
+                let g = (255.0 * ((i + j) as f32 / (WIDTH + HEIGHT) as f32 )) as u8;
+                *self.canvas.get_pixel_mut(i, j) = im::Rgba([r, b, g, 255])
+            }
+        }
+    }
+
     pub fn set_hit_img(&mut self) {
         let cam_pos: nl::Vector3<f32> = nl::Vector3::new(CAM_X, CAM_Y, CAM_Z);
 
@@ -157,6 +168,7 @@ fn main() {
 
         if let Some(r) = e.render_args() {
 
+            tracer.draw_background();
             tracer.set_hit_img();
             let mut texture_context = TextureContext {
                 factory: window.factory.clone(),
