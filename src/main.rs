@@ -11,6 +11,8 @@ use std::borrow::BorrowMut;
 
 // How to clutter workspace 101
 use piston_window::*;
+use std::f32::consts::*;
+
 // Internal Crates
 use crate::ray::*;
 use crate::world::*;
@@ -28,11 +30,11 @@ pub const CAM_X: f32 = 0.0;
 pub const CAM_Y: f32 = 0.0;
 pub const CAM_Z: f32 = 0.0;
 // Camera rotation
-pub const CAM_T: f32 = 0.0; // Theta ( Right Left plane )
-pub const CAM_P: f32 = 0.0; // Phi ( Up down plane)
+pub const CAM_T: f32 = PI; // Theta ( Right Left plane )
+pub const CAM_P: f32 = FRAC_PI_2; // Phi ( Up down plane)
 
-pub const SCR_T: f32 = 1.0; // Right left width of screen
-pub const SCR_P: f32 = 1.0; // Up down width of screen
+pub const SCR_T: f32 = FRAC_PI_3; // Right left width of screen
+pub const SCR_P: f32 = FRAC_PI_6; // Up down width of screen
 pub const SCR_Z: f32 = 1.0; // How far forwards the screen is
 
 
@@ -74,10 +76,10 @@ impl Tracer {
 //            r: 3.0
 //        });
         self.add_object(Sphere {
-            x0: 5.0,
-            y0: 5.0,
+            x0: -5.0,
+            y0: 0.0,
             z0: 0.0,
-            r: 2.00
+            r: 4.00
         });
     }
 
@@ -99,7 +101,6 @@ impl Tracer {
     pub fn set_hit_img(&mut self) {
         let cam_pos: nl::Vector3<f32> = nl::Vector3::new(CAM_X, CAM_Y, CAM_Z);
 
-        let mut z = CAM_Z + SCR_Z;
         // Centre
         let cn = nl::Vector3::new(CAM_X, CAM_Y, CAM_Z) + (SCR_Z * nl::Vector3::new(CAM_P.sin() * CAM_T.cos(),
                                                                                    CAM_P.sin() * CAM_T.sin(),
@@ -123,9 +124,11 @@ impl Tracer {
                 (nl::Vector3::new((CAM_P + SCR_P).sin() * (CAM_T - SCR_T).cos(),
                                   (CAM_P + SCR_P).sin() * (CAM_T - SCR_T).sin(),
                                   (CAM_P + SCR_P).cos()) * SCR_Z);
-        let dx = (ul[0] - br[0])/(WIDTH  as f32);
-        let dy = (ul[1] - br[1])/(WIDTH  as f32);
-        let dz = (ul[2] - br[2])/(HEIGHT as f32);
+
+//        println!("UL, {}", ul);
+//        println!("{}", ur);
+//        println!("{}", bl);
+//        println!("{}", br);
         let v_down = (bl - ul)/(HEIGHT as f32);
         let mut cur_y0 = ul;
         let mut cur_y1 = ur;
@@ -141,11 +144,10 @@ impl Tracer {
                 let r = create_ray(cam_pos, scr_pos, RAY_BOUNCE_MAX);
                 for obj in self.objects.iter() {
                     let r_new = obj.trace(r);
-                    if r_new.count == r.count {
-                    }
-                    else {
+                    if r_new.count != r.count {
                         // Draw to pixel here the colour of the object
-                        *self.canvas.get_pixel_mut(i, j) = im::Rgba([0, 255, 0, 255])
+                        println!("{}, {}, hit", i, j);
+                        *self.canvas.get_pixel_mut(i, j) = im::Rgba([63, 127, 255, 255])
                     }
                     // If ray intersects object
                     // Find normal of object at this point
