@@ -125,7 +125,7 @@ impl Traceable for Sphere {
     fn intersect(&self, r: Ray) -> (f32, nl::Vector3<f32>) {
         let c: f32 = (r.o[0] - self.x0).powi(2) +
                      (r.o[1] - self.y0).powi(2) +
-                     (r.o[2] - self.z0).powi(2);
+                     (r.o[2] - self.z0).powi(2) - self.r.powi(2);
         let b: f32 = (2.0 * r.d[0] * (r.o[0] - self.x0)) +
                      (2.0 * r.d[1] * (r.o[1] - self.y0)) +
                      (2.0 * r.d[2] * (r.o[2] - self.z0));
