@@ -1,6 +1,10 @@
 use crate::ray::*;
 use crate::display::*;
 
+pub fn distance(p1: nl::Vector3<f32>, p2: nl::Vector3<f32>) -> f32 {
+    return (p1 - p2).magnitude();
+}
+
 pub struct Plane {
     // EQ:: Ax + By + Cz + D = 0
     pub a: f32,
@@ -31,10 +35,14 @@ impl Traceable for Plane {
             let new_d: nl::Vector3<f32> = r.d - (2.0 * r.d.dot(&(self.normal(r).d)) * self.normal(r).d.normalize());
             let (t, o) = self.intersect(r);
             if t > 0.0 {
+                let mut distances: [f32; RAY_BOUNCE_MAX as usize] = [0.0; RAY_BOUNCE_MAX as usize];
+                distances[..((RAY_BOUNCE_MAX - r.count) as usize)].clone_from_slice(&r.distances[0..((RAY_BOUNCE_MAX - r.count) as usize)]);
+                distances[(RAY_BOUNCE_MAX - r.count) as usize] = distance(r.o, o);
                 return Ray {
                     o,
                     d: new_d,
-                    count: r.count - 1
+                    count: r.count - 1,
+                    distances,
                 };
             }
             else {
@@ -52,7 +60,8 @@ impl Traceable for Plane {
         return Ray {
             o: nl::Vector3::new(0.0000, 0.0000, 0.0000),
             d: nl::Vector3::new(self.a, self.b, self.c),
-            count: 0
+            count: 0,
+            distances: [0.0; RAY_BOUNCE_MAX as usize]
         };
     }
 
@@ -62,19 +71,19 @@ impl Traceable for Plane {
     }
 
     fn move_xn(&mut self) {
-        self.d -= 0.1;
+        self.a -= 0.1;
     }
 
     fn move_xp(&mut self) {
-        self.d += 0.1;
+        self.a += 0.1;
     }
 
     fn move_yn(&mut self) {
-        self.d -= 0.1;
+        self.b -= 0.1;
     }
 
     fn move_yp(&mut self) {
-        self.d += 0.1;
+        self.b += 0.1;
     }
 
     fn move_zn(&mut self) {
@@ -104,10 +113,14 @@ impl Traceable for Sphere {
         if t > 0.0 {
             // Collision
             let new_d: nl::Vector3<f32> = r.d - (2.0 * r.d.dot(&(self.normal(r).d)) * self.normal(r).d.normalize());
+            let mut distances: [f32; RAY_BOUNCE_MAX as usize] = [0.0; RAY_BOUNCE_MAX as usize];
+            distances[..((RAY_BOUNCE_MAX - r.count) as usize)].clone_from_slice(&r.distances[0..((RAY_BOUNCE_MAX - r.count) as usize)]);
+            distances[(RAY_BOUNCE_MAX - r.count) as usize] = distance(r.o, o);
             return Ray {
                 o,
                 d: new_d,
-                count: r.count - 1
+                count: r.count - 1,
+                distances,
             }
 
         }
@@ -118,7 +131,8 @@ impl Traceable for Sphere {
         return Ray {
             o: self.intersect(r).1, // This is not needed, consider commenting out
             d: self.intersect(r).1 - nl::Vector3::new(self.x0, self.y0, self.z0),
-            count: 0
+            count: 0,
+            distances: [0.0; RAY_BOUNCE_MAX as usize]
         };
     }
 

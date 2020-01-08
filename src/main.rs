@@ -7,7 +7,7 @@ extern crate piston_window;
 extern crate nalgebra as nl;
 
 // Std tings
-use std::borrow::BorrowMut;
+use std::borrow::Borrow;
 
 // How to clutter workspace 101
 use piston_window::*;
@@ -17,7 +17,7 @@ use std::f32::consts::*;
 use crate::ray::*;
 use crate::world::*;
 use crate::display::*;
-use nl::Vector3;
+use std::f32::INFINITY;
 
 mod ray;
 mod world;
@@ -57,24 +57,24 @@ impl Tracer {
     }
 
     pub fn create_world(&mut self) {
-//        self.add_object( Plane {
-//            a: 1.0,
-//            b: 2.0,
-//            c: 3.0,
-//            d: 4.0
-//        });
-//        self.add_object(Plane {
-//            a: 0.0,
-//            b: 1.0,
-//            c: 2.0,
-//            d: 3.0
-//        });
-//        self.add_object(Sphere {
-//            x0: 2.0,
-//            y0: 2.0,
-//            z0: 0.0,
-//            r: 3.0
-//        });
+        self.add_object( Plane {
+            a: 1.0,
+            b: 2.0,
+            c: 3.0,
+            d: 4.0
+        });
+        self.add_object(Plane {
+            a: 0.0,
+            b: 1.0,
+            c: 2.0,
+            d: 3.0
+        });
+        self.add_object(Sphere {
+            x0: -7.0,
+            y0: 2.0,
+            z0: 0.0,
+            r: 3.0
+        });
         self.add_object(Sphere {
             x0: -5.0,
             y0: 0.0,
@@ -95,6 +95,28 @@ impl Tracer {
                 let g = (255.0 * ((i + j) as f32 / (WIDTH + HEIGHT) as f32 )) as u8;
                 *self.canvas.get_pixel_mut(i, j) = im::Rgba([r, b, g, 255])
             }
+        }
+    }
+
+    pub fn recursive_trace(&self, r: Ray) -> im::Rgba<u8> {
+        if r.count > 0 {
+            let min_dist = INFINITY;
+            let mut to_trace: &Box<dyn Traceable> = self.objects[0].borrow();
+            let mut ray_new = r;
+            for obj in self.objects.iter() {
+                let r_new = obj.trace(r);
+                if r_new.total_distance() < min_dist {
+                    to_trace = obj;
+                    ray_new = r_new;
+                }
+            }
+            if r.count == ray_new.count {
+                return im::Rgba([0, 0, 0, 255]);
+            }
+            return self.recursive_trace(ray_new);
+        }
+        else {
+            return im::Rgba([63, 127, 255, 255]);
         }
     }
 
@@ -125,10 +147,6 @@ impl Tracer {
                                   (CAM_P + SCR_P).sin() * (CAM_T - SCR_T).sin(),
                                   (CAM_P + SCR_P).cos()) * SCR_Z);
 
-//        println!("UL, {}", ul);
-//        println!("{}", ur);
-//        println!("{}", bl);
-//        println!("{}", br);
         let v_down = (bl - ul)/(HEIGHT as f32);
         let mut cur_y0 = ul;
         let mut cur_y1 = ur;
@@ -140,14 +158,14 @@ impl Tracer {
             for i in 0..WIDTH {
                 scr_pos += v_right;
                 // Create Ray from position to screen
-                // TODO:: Factor in Camera rotation; Rotation matrix must be applied to scr_pos vector..
                 let r = create_ray(cam_pos, scr_pos, RAY_BOUNCE_MAX);
+                let pix_colour = self.recursive_trace(r);
                 for obj in self.objects.iter() {
                     let r_new = obj.trace(r);
                     if r_new.count != r.count {
                         // Draw to pixel here the colour of the object
-                        println!("{}, {}, hit", i, j);
-                        *self.canvas.get_pixel_mut(i, j) = im::Rgba([63, 127, 255, 255])
+                        let dist = r_new.total_distance() as u8;
+                        *self.canvas.get_pixel_mut(i, j) = im::Rgba([63/dist, 127/dist, 255/dist, 255]);
                     }
                     // If ray intersects object
                     // Find normal of object at this point
@@ -166,7 +184,9 @@ fn create_ray(o: nl::Vector3<f32>, q: nl::Vector3<f32>, count: u8) -> Ray {
     return Ray {
         o,
         d,
-        count
+        count,
+        distances: [0.0; RAY_BOUNCE_MAX as usize],
+//        collided: vec![]
     }
 }
 
@@ -191,6 +211,7 @@ fn main() {
     tracer.create_world();
     tracer.set_hit_img();
 
+    let mut obj_selector = 0;
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
 
@@ -198,31 +219,35 @@ fn main() {
             // Update cursor position
         });
         if let Some(Button::Keyboard(key)) = e.press_args() {
-            let i = 0;
-            tracer.objects[i].get_location();
+            tracer.objects[obj_selector].get_location();
             if key == Key::Left {
                 println!("Move X-");
-                tracer.objects[i].move_xn();
+                tracer.objects[obj_selector].move_xn();
             }
             if key == Key::Right {
                 println!("Move X+");
-                tracer.objects[i].move_xp();
+                tracer.objects[obj_selector].move_xp();
             }
             if key == Key::Up {
                 println!("Move Y-");
-                tracer.objects[i].move_yn();
+                tracer.objects[obj_selector].move_yn();
             }
             if key == Key::Down {
                 println!("Move Y+");
-                tracer.objects[i].move_yp();
+                tracer.objects[obj_selector].move_yp();
             }
             if key == Key::LShift {
                 println!("Move Z-");
-                tracer.objects[i].move_zn();
+                tracer.objects[obj_selector].move_zn();
             }
             if key == Key::LCtrl {
                 println!("Move Z+");
-                tracer.objects[i].move_zp();
+                tracer.objects[obj_selector].move_zp();
+            }
+            if key == Key::Tab {
+                println!("Swap Objects");
+                obj_selector += 1;
+                obj_selector %= tracer.objects.len();
             }
         }
 
