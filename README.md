@@ -22,7 +22,7 @@ Sources used:
   - This is a big maybe because I'm lazy
 - [ ] Support physically based reflections
 
-### Focus
+## Focus
 
 Focus will be on a minimum viable product and I will be looking to expand from there.
 
